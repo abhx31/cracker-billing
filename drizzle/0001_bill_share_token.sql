@@ -1,0 +1,2 @@
+ALTER TABLE "bills" ADD COLUMN "share_token" text DEFAULT replace(gen_random_uuid()::text, '-', '') NOT NULL;--> statement-breakpoint
+ALTER TABLE "bills" ADD CONSTRAINT "bills_share_token_unique" UNIQUE("share_token");

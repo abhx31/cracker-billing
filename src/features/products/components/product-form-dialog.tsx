@@ -1,0 +1,150 @@
+"use client";
+
+import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
+import { toast } from "sonner";
+import { FormField } from "@/components/form-field";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import type { Product } from "@/db/schema";
+import { saveProduct, type ProductFormState } from "../actions";
+
+export function ProductFormDialog({ product, trigger }: { product?: Product; trigger: ReactNode }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{product ? "Edit product" : "Add product"}</DialogTitle>
+          <DialogDescription>
+            {product
+              ? "Update details. Use “Adjust stock” to change quantity."
+              : "Add a cracker item with its opening stock."}
+          </DialogDescription>
+        </DialogHeader>
+        {/* Remount on open so the form starts fresh each time. */}
+        {open && <ProductForm product={product} onSaved={() => setOpen(false)} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => void }) {
+  const [state, formAction, pending] = useActionState<ProductFormState, FormData>(
+    saveProduct,
+    null,
+  );
+
+  // Each result is handled once, even if the parent re-renders after refresh().
+  const handled = useRef<ProductFormState>(null);
+  useEffect(() => {
+    if (!state || handled.current === state) return;
+    handled.current = state;
+    if (state.ok) {
+      toast.success(state.message ?? "Saved");
+      onSaved();
+    } else if (!state.fieldErrors) {
+      toast.error(state.error);
+    }
+  }, [state, onSaved]);
+
+  const errors = state && !state.ok ? state.fieldErrors : undefined;
+
+  return (
+    <form action={formAction} className="grid gap-4">
+      {product && <input type="hidden" name="id" value={product.id} />}
+      <FormField
+        label="Name"
+        name="name"
+        defaultValue={product?.name}
+        placeholder="e.g. Flower Pot (Big)"
+        required
+        autoFocus
+        errors={errors?.name}
+      />
+      <div className="grid grid-cols-2 gap-4">
+        <FormField
+          label="Category"
+          name="category"
+          defaultValue={product?.category ?? ""}
+          placeholder="e.g. Ground"
+          errors={errors?.category}
+        />
+        <FormField
+          label="Unit"
+          name="unit"
+          defaultValue={product?.unit ?? "box"}
+          placeholder="box / pkt / pcs"
+          required
+          errors={errors?.unit}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <FormField
+          label="Price (₹)"
+          name="price"
+          type="number"
+          inputMode="decimal"
+          min={0}
+          step="0.01"
+          defaultValue={product?.price}
+          required
+          errors={errors?.price}
+        />
+        {product ? (
+          <FormField
+            label="Low stock alert at"
+            name="lowStockThreshold"
+            type="number"
+            min={0}
+            defaultValue={product.lowStockThreshold}
+            errors={errors?.lowStockThreshold}
+          />
+        ) : (
+          <FormField
+            label="Opening stock"
+            name="stock"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            step={1}
+            defaultValue={0}
+            required
+            errors={errors?.stock}
+          />
+        )}
+      </div>
+      {!product && (
+        <FormField
+          label="Low stock alert at"
+          name="lowStockThreshold"
+          type="number"
+          min={0}
+          defaultValue={10}
+          hint="Shown as “Low” on the dashboard at or below this quantity."
+          errors={errors?.lowStockThreshold}
+        />
+      )}
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button type="button" variant="outline">
+            Cancel
+          </Button>
+        </DialogClose>
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving…" : product ? "Save changes" : "Add product"}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}

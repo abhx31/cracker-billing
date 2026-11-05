@@ -1,0 +1,68 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+#
+# Keep committed (do NOT ignore):
+#   drizzle/                      SQL migrations + meta snapshots
+#   package-lock.json             reproducible installs
+#   src/features/bills/pdf/fonts  fonts needed to render bill PDFs
+#   .env.example                  template for required settings
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# env files: secrets (Neon URL, WhatsApp token) never go in git
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# debug / logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# throwaway scripts (e.g. scripts/.tmp-check.ts)
+scripts/.tmp-*
+
+# certificates / keys
+*.pem
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*~
+
+# Claude Code local (per-user) settings
+.claude/settings.local.json
