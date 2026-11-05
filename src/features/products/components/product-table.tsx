@@ -21,18 +21,34 @@ import { setProductActive } from "../actions";
 import { hasPack } from "../pack";
 import { ProductFormDialog } from "./product-form-dialog";
 
+type PackFilter = "all" | "packs" | "single";
+
+const packFilters: { value: PackFilter; label: string; matches: (p: Product) => boolean }[] = [
+  { value: "all", label: "All", matches: () => true },
+  { value: "packs", label: "Sold in packs", matches: (p) => hasPack(p) },
+  { value: "single", label: "Single only", matches: (p) => !hasPack(p) },
+];
+
 export function ProductTable({ products }: { products: Product[] }) {
   const [query, setQuery] = useState("");
+  const [packFilter, setPackFilter] = useState<PackFilter>("all");
   const [showArchived, setShowArchived] = useState(false);
+
+  // Counts per filter ignore the search box but respect "show archived".
+  const listed = useMemo(
+    () => products.filter((p) => showArchived || p.isActive),
+    [products, showArchived],
+  );
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return products.filter(
+    const filter = packFilters.find((f) => f.value === packFilter)!;
+    return listed.filter(
       (p) =>
-        (showArchived || p.isActive) &&
+        filter.matches(p) &&
         (!q || p.name.toLowerCase().includes(q) || p.category?.toLowerCase().includes(q)),
     );
-  }, [products, query, showArchived]);
+  }, [listed, query, packFilter]);
 
   const archivedCount = products.filter((p) => !p.isActive).length;
 
@@ -49,6 +65,26 @@ export function ProductTable({ products }: { products: Product[] }) {
             aria-label="Search products"
           />
         </div>
+        <div role="radiogroup" aria-label="Filter by pack" className="inline-flex rounded-lg border p-0.5">
+          {packFilters.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              role="radio"
+              aria-checked={packFilter === f.value}
+              onClick={() => setPackFilter(f.value)}
+              className={cn(
+                "rounded-md px-2.5 py-1 text-sm font-medium whitespace-nowrap transition-colors",
+                packFilter === f.value
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {f.label}
+              <span className="ml-1 tabular-nums opacity-70">{listed.filter(f.matches).length}</span>
+            </button>
+          ))}
+        </div>
         {archivedCount > 0 && (
           <Button variant="ghost" size="sm" onClick={() => setShowArchived((v) => !v)}>
             {showArchived ? "Hide archived" : `Show archived (${archivedCount})`}
@@ -62,14 +98,15 @@ export function ProductTable({ products }: { products: Product[] }) {
             <TableRow>
               <TableHead>Product</TableHead>
               <TableHead className="hidden sm:table-cell">Category</TableHead>
-              <TableHead className="text-right">Price</TableHead>
+              <TableHead className="text-right">Piece price</TableHead>
+              <TableHead className="text-right">Pack</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {visible.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                   {products.length === 0 ? "No products yet. Add your first item." : "No matches."}
                 </TableCell>
               </TableRow>
@@ -88,12 +125,15 @@ export function ProductTable({ products }: { products: Product[] }) {
                   <TableCell className="hidden text-muted-foreground sm:table-cell">
                     {p.category ?? "—"}
                   </TableCell>
+                  <TableCell className="text-right tabular-nums">{formatCurrency(p.price)}</TableCell>
                   <TableCell className="text-right tabular-nums">
-                    {formatCurrency(p.price)}
-                    {hasPack(p) && (
-                      <p className="text-xs text-muted-foreground">
-                        {formatCurrency(p.packPrice)} / {p.packSize} pcs
-                      </p>
+                    {hasPack(p) ? (
+                      <>
+                        {formatCurrency(p.packPrice)}
+                        <p className="text-xs text-muted-foreground">{p.packSize} pcs</p>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
                     )}
                   </TableCell>
                   <TableCell>
