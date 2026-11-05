@@ -1,4 +1,4 @@
-import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { BillWithItems } from "@/db/schema";
 import { formatBillNumber, formatCurrency, formatDateTime, formatQuantity } from "@/lib/format";
 
@@ -22,12 +22,14 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     paddingBottom: 12,
     marginBottom: 16,
     borderBottomWidth: 2,
     borderBottomColor: colors.accent,
   },
+  brand: { flexDirection: "row", alignItems: "center" },
+  logo: { width: 64, height: 64, marginRight: 12 },
   shopName: { fontSize: 18, fontWeight: 700 },
   docLabel: { color: colors.muted, marginTop: 2 },
   billNumber: { fontSize: 12, fontWeight: 700, textAlign: "right" },
@@ -69,16 +71,30 @@ const styles = StyleSheet.create({
   },
 });
 
-export function BillDocument({ bill, shopName }: { bill: BillWithItems; shopName: string }) {
+export type PdfLogo = { data: Buffer; format: "jpg" | "png" };
+
+export function BillDocument({
+  bill,
+  shopName,
+  logo,
+}: {
+  bill: BillWithItems;
+  shopName: string;
+  logo?: PdfLogo;
+}) {
   const billNumber = formatBillNumber(bill.id);
 
   return (
     <Document title={`${shopName} - ${billNumber}`} author={shopName} subject="Bill">
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          <View>
-            <Text style={styles.shopName}>{shopName}</Text>
-            <Text style={styles.docLabel}>Bill</Text>
+          <View style={styles.brand}>
+            {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image has no alt */}
+            {logo && <Image src={logo} style={styles.logo} />}
+            <View>
+              <Text style={styles.shopName}>{shopName}</Text>
+              <Text style={styles.docLabel}>Bill</Text>
+            </View>
           </View>
           <View>
             <Text style={styles.billNumber}>{billNumber}</Text>

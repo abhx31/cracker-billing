@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Cracker Billing", template: "%s · Cracker Billing" },
+  title: { default: "Jai Bhavani Crackers", template: "%s · Jai Bhavani Crackers" },
   description: "Bill crackers and send bills on WhatsApp",
 };
 

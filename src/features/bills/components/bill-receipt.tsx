@@ -1,3 +1,4 @@
+import Image from "next/image";
 import {
   Table,
   TableBody,
@@ -14,10 +15,13 @@ import { formatBillNumber, formatCurrency, formatDateTime, formatQuantity } from
 export function BillReceipt({ bill, shopName }: { bill: BillWithItems; shopName: string }) {
   return (
     <article className="rounded-xl border bg-card p-6 print:border-0 print:p-0">
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold">{shopName}</h2>
-          <p className="text-sm text-muted-foreground">Bill</p>
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Image src="/logo.png" alt="" width={56} height={56} className="size-14" />
+          <div>
+            <h2 className="text-xl font-semibold">{shopName}</h2>
+            <p className="text-sm text-muted-foreground">Bill</p>
+          </div>
         </div>
         <div className="text-right text-sm">
           <p className="font-semibold">{formatBillNumber(bill.id)}</p>

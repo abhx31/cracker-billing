@@ -8,9 +8,12 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [{ source: "/stock", destination: "/products", permanent: true }];
   },
-  // Bill PDFs read these fonts from disk at runtime; make sure deployments ship them.
+  // Bill PDFs read fonts and the logo from disk at runtime; make sure deployments ship them.
   outputFileTracingIncludes: {
-    "/b/[token]": ["./src/features/bills/pdf/fonts/*.ttf"],
+    "/b/[token]": [
+      "./src/features/bills/pdf/fonts/*.ttf",
+      "./src/features/bills/pdf/assets/*",
+    ],
   },
   turbopack: {
     rules: {
