@@ -10,7 +10,7 @@ A simple billing and stock app for a cracker shop. Each bill records the custome
 npm install
 cp .env.example .env        # then fill in DATABASE_URL (and SHOP_NAME)
 npm run db:migrate          # create tables
-npm run db:seed             # optional: 17 sample cracker products
+npm run db:seed             # load the product list (scripts/data/material-list.ts)
 npm run dev
 ```
 
@@ -69,7 +69,7 @@ src/
     bills/                  billing: calc, schemas, service (transaction), queries, actions, components
     whatsapp/               message builder, phone normalizing, providers (Cloud API)
   lib/                      env validation, formatting, action result helpers
-scripts/seed.ts             sample data
+scripts/seed.ts             loads scripts/data/material-list.ts
 drizzle/                    generated SQL migrations
 ```
 
@@ -90,7 +90,7 @@ How the parts fit together:
 | `npm run db:generate` | Create a migration after editing the schema  |
 | `npm run db:migrate`  | Apply migrations                             |
 | `npm run db:studio`   | Browse data in Drizzle Studio                |
-| `npm run db:seed`     | Insert sample products (skips existing ones) |
+| `npm run db:seed`     | Add products from the list (skips existing names); `-- --replace` deletes all products first (refused while bills exist) |
 
 ## Notes
 
