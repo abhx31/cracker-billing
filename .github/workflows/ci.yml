@@ -1,0 +1,54 @@
+name: CI
+
+# Deployment itself is handled by Vercel's Git integration; this only checks code.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Lint, typecheck, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Build and migration generation never connect to the database; this
+      # placeholder only satisfies config validation. A real query would fail.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Check migrations are committed
+        # Fails if src/db/schema changed without running `npm run db:generate`.
+        run: |
+          npx drizzle-kit generate --name ci-drift-check
+          if [ -n "$(git status --porcelain drizzle)" ]; then
+            echo "::error::Schema changed but no migration was committed. Run 'npm run db:generate' and commit the drizzle/ folder."
+            git status --porcelain drizzle
+            exit 1
+          fi
+
+      - name: Build
+        run: npm run build

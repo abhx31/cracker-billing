@@ -33,11 +33,17 @@ Every bill has a PDF at `/b/<share token>`. The token is a random 32-character c
 - **Public URL.** On Vercel it's detected automatically (`VERCEL_PROJECT_PRODUCTION_URL`). Anywhere else, set `APP_URL`.
 - PDFs are built with `@react-pdf/renderer` using the bundled Noto Sans fonts (`src/features/bills/pdf/`), which include the ₹ symbol.
 
-## Deploying (Vercel)
+## Deploying
 
-1. Push the repo to GitHub and import it in Vercel.
-2. Add the env vars `DATABASE_URL` and `SHOP_NAME`, plus `WHATSAPP_DEFAULT_COUNTRY_CODE` if it isn't 91.
-3. Deploy. Migrations are already applied to Neon. Run `npm run db:migrate` locally after any schema change.
+**Vercel** (deploys itself):
+
+1. Push the repo to GitHub, then import it at [vercel.com/new](https://vercel.com/new).
+2. Add these environment variables: `DATABASE_URL` and `SHOP_NAME`, plus `WHATSAPP_DEFAULT_COUNTRY_CODE` if it isn't 91.
+3. Done. Every push to `main` deploys to production, and pull requests get preview URLs.
+
+**CI** (`.github/workflows/ci.yml`) runs on pushes and pull requests: lint → typecheck → migration check → build. It needs no secrets.
+
+**Changing the database schema:** edit `src/db/schema`, run `npm run db:generate`, then `npm run db:migrate`, then commit the new file in `drizzle/`. CI fails if the migration file is missing. Previews share the production database, so apply migrations yourself rather than in the build.
 
 ## WhatsApp
 
