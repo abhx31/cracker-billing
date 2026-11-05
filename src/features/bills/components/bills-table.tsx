@@ -57,7 +57,7 @@ export function BillsTable({
                 <TableCell>
                   <p className="font-medium">{bill.customerName}</p>
                   <p className="text-xs text-muted-foreground">
-                    +{bill.customerPhone} · {bill.itemCount} items
+                    +{bill.customerPhone} · {bill.itemCount} {bill.itemCount === 1 ? "item" : "items"}
                   </p>
                 </TableCell>
                 {!compact && (
