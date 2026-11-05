@@ -83,24 +83,49 @@ function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => v
         <FormField
           label="Unit"
           name="unit"
-          defaultValue={product?.unit ?? "box"}
-          placeholder="box / pkt / pcs"
+          defaultValue={product?.unit ?? "pc"}
+          placeholder="pc / box / pkt"
           required
           errors={errors?.unit}
         />
       </div>
+      <FormField
+        label="Price per piece (₹)"
+        name="price"
+        type="number"
+        inputMode="decimal"
+        min={0}
+        step="0.01"
+        defaultValue={product?.price}
+        required
+        errors={errors?.price}
+      />
       <div className="grid grid-cols-2 gap-4">
         <FormField
-          label="Price (₹)"
-          name="price"
+          label="Pieces per pack"
+          name="packSize"
+          type="number"
+          inputMode="numeric"
+          min={2}
+          step={1}
+          defaultValue={product?.packSize ?? ""}
+          placeholder="e.g. 25"
+          hint="Optional. Leave empty if not sold by pack."
+          errors={errors?.packSize}
+        />
+        <FormField
+          label="Pack price (₹)"
+          name="packPrice"
           type="number"
           inputMode="decimal"
           min={0}
           step="0.01"
-          defaultValue={product?.price}
-          required
-          errors={errors?.price}
+          defaultValue={product?.packPrice ?? ""}
+          placeholder="e.g. 350"
+          errors={errors?.packPrice}
         />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
         {product ? (
           <FormField
             label="Low stock alert at"
@@ -111,30 +136,29 @@ function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => v
             errors={errors?.lowStockThreshold}
           />
         ) : (
-          <FormField
-            label="Opening stock"
-            name="stock"
-            type="number"
-            inputMode="numeric"
-            min={0}
-            step={1}
-            defaultValue={0}
-            required
-            errors={errors?.stock}
-          />
+          <>
+            <FormField
+              label="Opening stock (pieces)"
+              name="stock"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              defaultValue={0}
+              required
+              errors={errors?.stock}
+            />
+            <FormField
+              label="Low stock alert at"
+              name="lowStockThreshold"
+              type="number"
+              min={0}
+              defaultValue={10}
+              errors={errors?.lowStockThreshold}
+            />
+          </>
         )}
       </div>
-      {!product && (
-        <FormField
-          label="Low stock alert at"
-          name="lowStockThreshold"
-          type="number"
-          min={0}
-          defaultValue={10}
-          hint="Shown as “Low” on the dashboard at or below this quantity."
-          errors={errors?.lowStockThreshold}
-        />
-      )}
       <DialogFooter>
         <DialogClose asChild>
           <Button type="button" variant="outline">

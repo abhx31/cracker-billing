@@ -2,6 +2,7 @@ import "server-only";
 import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { billItems, bills, products, type BillWithItems, type WhatsappStatus } from "@/db/schema";
+import { sellUnit, type SellAs } from "@/features/products/pack";
 import { roundMoney } from "@/lib/format";
 import { computeTotals } from "./calc";
 import type { CreateBillInput } from "./schemas";
@@ -9,12 +10,16 @@ import type { CreateBillInput } from "./schemas";
 /** Errors whose message is safe and useful to show the biller. */
 export class BillError extends Error {}
 
-function mergeQuantities(items: CreateBillInput["items"]) {
-  const merged = new Map<number, number>();
-  for (const { productId, quantity } of items) {
-    merged.set(productId, (merged.get(productId) ?? 0) + quantity);
+/** Combines duplicate lines: one entry per product + piece/pack. */
+function mergeLines(items: CreateBillInput["items"]) {
+  const merged = new Map<string, { productId: number; sellAs: SellAs; quantity: number }>();
+  for (const { productId, sellAs, quantity } of items) {
+    const key = `${productId}:${sellAs}`;
+    const existing = merged.get(key);
+    if (existing) existing.quantity += quantity;
+    else merged.set(key, { productId, sellAs, quantity });
   }
-  return merged;
+  return [...merged.values()];
 }
 
 /**
@@ -24,38 +29,55 @@ function mergeQuantities(items: CreateBillInput["items"]) {
 export async function createBill(
   input: Omit<CreateBillInput, "customerPhone"> & { customerPhone: string },
 ): Promise<BillWithItems> {
-  const quantities = mergeQuantities(input.items);
+  const requested = mergeLines(input.items);
 
   return db.transaction(async (tx) => {
     const rows = await tx
       .select()
       .from(products)
-      .where(inArray(products.id, [...quantities.keys()]))
+      .where(inArray(products.id, [...new Set(requested.map((l) => l.productId))]))
       .for("update");
     const byId = new Map(rows.map((p) => [p.id, p]));
 
-    const lines = [...quantities].map(([productId, quantity]) => {
+    const lines = requested.map(({ productId, sellAs, quantity }) => {
       const product = byId.get(productId);
       if (!product || !product.isActive) {
         throw new BillError("One of the items is no longer available. Refresh and try again.");
       }
-      if (product.stock < quantity) {
+      if (sellAs === "pack" && (product.packSize === null || product.packPrice === null)) {
+        throw new BillError(`${product.name} is not sold by the pack. Refresh and try again.`);
+      }
+      // Price always comes from the database, never from the client.
+      const { unitPrice, piecesPerUnit, unit } = sellUnit(product, sellAs);
+      return {
+        productId,
+        productName: product.name,
+        unit,
+        unitPrice,
+        quantity,
+        piecesPerUnit,
+        lineTotal: roundMoney(unitPrice * quantity),
+      };
+    });
+
+    // Stock is in pieces; a product may appear as both pieces and packs.
+    const piecesNeeded = new Map<number, number>();
+    for (const line of lines) {
+      piecesNeeded.set(
+        line.productId,
+        (piecesNeeded.get(line.productId) ?? 0) + line.quantity * line.piecesPerUnit,
+      );
+    }
+    for (const [productId, pieces] of piecesNeeded) {
+      const product = byId.get(productId)!;
+      if (product.stock < pieces) {
         throw new BillError(
           product.stock === 0
             ? `${product.name} is out of stock`
             : `Only ${product.stock} ${product.unit} of ${product.name} left`,
         );
       }
-      return {
-        productId,
-        productName: product.name,
-        unit: product.unit,
-        // Price always comes from the database, never from the client.
-        unitPrice: product.price,
-        quantity,
-        lineTotal: roundMoney(product.price * quantity),
-      };
-    });
+    }
 
     const totals = computeTotals(lines, input.discountPercent);
 
@@ -75,11 +97,11 @@ export async function createBill(
       .values(lines.map((line) => ({ ...line, billId: bill.id })))
       .returning();
 
-    for (const line of lines) {
+    for (const [productId, pieces] of piecesNeeded) {
       await tx
         .update(products)
-        .set({ stock: sql`${products.stock} - ${line.quantity}` })
-        .where(eq(products.id, line.productId));
+        .set({ stock: sql`${products.stock} - ${pieces}` })
+        .where(eq(products.id, productId));
     }
 
     return { ...bill, items };
@@ -94,7 +116,11 @@ export async function createBill(
 export async function deleteBill(billId: number) {
   return db.transaction(async (tx) => {
     const items = await tx
-      .select({ productId: billItems.productId, quantity: billItems.quantity })
+      .select({
+        productId: billItems.productId,
+        quantity: billItems.quantity,
+        piecesPerUnit: billItems.piecesPerUnit,
+      })
       .from(billItems)
       .where(eq(billItems.billId, billId));
 
@@ -108,11 +134,13 @@ export async function deleteBill(billId: number) {
       if (item.productId === null) continue;
       await tx
         .update(products)
-        .set({ stock: sql`${products.stock} + ${item.quantity}` })
+        .set({ stock: sql`${products.stock} + ${item.quantity * item.piecesPerUnit}` })
         .where(eq(products.id, item.productId));
     }
 
-    return { restoredUnits: items.reduce((sum, item) => sum + item.quantity, 0) };
+    return {
+      restoredPieces: items.reduce((sum, item) => sum + item.quantity * item.piecesPerUnit, 0),
+    };
   });
 }
 

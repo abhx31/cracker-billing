@@ -16,8 +16,13 @@ export const products = pgTable(
     id: serial("id").primaryKey(),
     name: text("name").notNull().unique(),
     category: text("category"),
-    unit: text("unit").notNull().default("box"),
+    unit: text("unit").notNull().default("pc"),
+    /** Price of one piece (SP). */
     price: numeric("price", { precision: 12, scale: 2, mode: "number" }).notNull(),
+    /** Optional whole-pack offer: `packPrice` for `packSize` pieces. Both or neither. */
+    packSize: integer("pack_size"),
+    packPrice: numeric("pack_price", { precision: 12, scale: 2, mode: "number" }),
+    /** Always counted in pieces; selling a pack deducts `packSize`. */
     stock: integer("stock").notNull().default(0),
     lowStockThreshold: integer("low_stock_threshold").notNull().default(10),
     isActive: boolean("is_active").notNull().default(true),
@@ -31,6 +36,10 @@ export const products = pgTable(
     // Last line of defence against overselling.
     check("products_stock_non_negative", sql`${t.stock} >= 0`),
     check("products_price_non_negative", sql`${t.price} >= 0`),
+    check(
+      "products_pack_complete",
+      sql`(${t.packSize} is null and ${t.packPrice} is null) or (${t.packSize} >= 2 and ${t.packPrice} >= 0)`,
+    ),
   ],
 );
 

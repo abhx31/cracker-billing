@@ -12,6 +12,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { hasPack } from "@/features/products/pack";
 import type { BillableProduct } from "@/features/products/queries";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -70,6 +71,8 @@ export function ProductPicker({
                       <p className="text-xs text-muted-foreground">
                         {product.category ? `${product.category} · ` : ""}
                         {formatCurrency(product.price)} / {product.unit}
+                        {hasPack(product) &&
+                          ` · ${formatCurrency(product.packPrice)} / pack of ${product.packSize}`}
                       </p>
                     </div>
                     <span

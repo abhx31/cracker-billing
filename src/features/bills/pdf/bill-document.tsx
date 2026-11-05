@@ -1,6 +1,6 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { BillWithItems } from "@/db/schema";
-import { formatBillNumber, formatCurrency, formatDateTime } from "@/lib/format";
+import { formatBillNumber, formatCurrency, formatDateTime, formatQuantity } from "@/lib/format";
 
 const colors = {
   text: "#1c1917",
@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
   cNo: { width: 24, paddingHorizontal: 4, color: colors.muted },
   cItem: { flex: 1, paddingHorizontal: 4 },
   cRate: { width: 70, paddingHorizontal: 4, textAlign: "right" },
-  cQty: { width: 60, paddingHorizontal: 4, textAlign: "right" },
+  cQty: { width: 100, paddingHorizontal: 4, textAlign: "right" },
   cAmount: { width: 80, paddingHorizontal: 4, textAlign: "right" },
   totals: { marginTop: 12, marginLeft: "auto", width: 220 },
   totalRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 },
@@ -117,7 +117,7 @@ export function BillDocument({ bill, shopName }: { bill: BillWithItems; shopName
             <Text style={styles.cItem}>{item.productName}</Text>
             <Text style={styles.cRate}>{formatCurrency(item.unitPrice)}</Text>
             <Text style={styles.cQty}>
-              {item.quantity} {item.unit}
+              {formatQuantity(item.quantity, item.unit, item.piecesPerUnit)}
             </Text>
             <Text style={styles.cAmount}>{formatCurrency(item.lineTotal)}</Text>
           </View>

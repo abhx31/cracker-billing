@@ -14,7 +14,9 @@ import type { BillableProduct } from "@/features/products/queries";
 import { openPendingTab } from "@/features/whatsapp/links";
 import { createBill, markBillShared } from "../actions";
 import { computeTotals } from "../calc";
-import { BillLines, type BillLine } from "./bill-lines";
+import { sellUnit, type SellAs } from "@/features/products/pack";
+import { BillLines, lineKey, maxQuantity, piecesByProduct, type BillLine } from "./bill-lines";
+import { AddItemDialog } from "./add-item-dialog";
 import { ProductPicker } from "./product-picker";
 
 // No auth: remember who is billing on this device so they don't retype it.
@@ -52,6 +54,8 @@ export function BillForm({
   const [billedBy, setBilledBy] = useState("");
   const [discount, setDiscount] = useState("");
   const [lines, setLines] = useState<BillLine[]>([]);
+  // Cracker picked from search, waiting for piece/pack + quantity.
+  const [picked, setPicked] = useState<BillableProduct | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
 
   useEffect(() => {
@@ -70,39 +74,53 @@ export function BillForm({
     [lines, productsById],
   );
 
-  const inBill = useMemo(
-    () => new Map(currentLines.map((l) => [l.product.id, l.quantity])),
-    [currentLines],
-  );
+  // Pieces already on the bill per product (packs count as their pack size).
+  const inBill = useMemo(() => piecesByProduct(currentLines), [currentLines]);
 
   const discountPercent = Math.min(100, Math.max(0, Number(discount) || 0));
   const totals = computeTotals(
-    currentLines.map((l) => ({ unitPrice: l.product.price, quantity: l.quantity })),
+    currentLines.map((l) => ({
+      unitPrice: sellUnit(l.product, l.sellAs).unitPrice,
+      quantity: l.quantity,
+    })),
     discountPercent,
   );
-  const overStock = currentLines.some((l) => l.quantity > l.product.stock);
+  const overStock = currentLines.some((l) => l.quantity > maxQuantity(l, currentLines));
 
-  function addProduct(product: BillableProduct) {
+  /** Adds from the piece/pack dialog; same product + kind adds to the existing line. */
+  function addLine(product: BillableProduct, sellAs: SellAs, quantity: number) {
     setLines((prev) => {
-      const existing = prev.find((l) => l.product.id === product.id);
+      const key = lineKey({ product, sellAs });
+      const existing = prev.find((l) => lineKey(l) === key);
       if (existing) {
-        return prev.map((l) =>
-          l.product.id === product.id
-            ? { ...l, quantity: Math.min(product.stock, l.quantity + 1) }
-            : l,
-        );
+        return prev.map((l) => (l === existing ? { ...l, quantity: l.quantity + quantity } : l));
       }
-      return [...prev, { product, quantity: 1 }];
+      return [...prev, { product, sellAs, quantity }];
     });
     setErrors((e) => ({ ...e, items: undefined }));
   }
 
-  function setQuantity(productId: number, quantity: number) {
-    setLines((prev) => prev.map((l) => (l.product.id === productId ? { ...l, quantity } : l)));
+  function setQuantity(key: string, quantity: number) {
+    setLines((prev) => prev.map((l) => (lineKey(l) === key ? { ...l, quantity } : l)));
   }
 
-  function removeLine(productId: number) {
-    setLines((prev) => prev.filter((l) => l.product.id !== productId));
+  /** Switches a line between pieces and packs, merging into an existing line of that kind. */
+  function setSellAs(key: string, sellAs: SellAs) {
+    setLines((prev) => {
+      const line = prev.find((l) => lineKey(l) === key);
+      if (!line) return prev;
+      const target = prev.find((l) => lineKey(l) === lineKey({ ...line, sellAs }));
+      if (target) {
+        return prev
+          .filter((l) => l !== line)
+          .map((l) => (l === target ? { ...l, quantity: l.quantity + line.quantity } : l));
+      }
+      return prev.map((l) => (l === line ? { ...l, sellAs } : l));
+    });
+  }
+
+  function removeLine(key: string) {
+    setLines((prev) => prev.filter((l) => lineKey(l) !== key));
   }
 
   function reset() {
@@ -134,7 +152,11 @@ export function BillForm({
         customerPhone,
         billedBy,
         discountPercent,
-        items: currentLines.map((l) => ({ productId: l.product.id, quantity: l.quantity })),
+        items: currentLines.map((l) => ({
+          productId: l.product.id,
+          quantity: l.quantity,
+          sellAs: l.sellAs,
+        })),
       });
 
       if (!result.ok) {
@@ -200,9 +222,26 @@ export function BillForm({
             <CardTitle>Items</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <ProductPicker products={products} inBill={inBill} onPick={addProduct} />
+            <ProductPicker products={products} inBill={inBill} onPick={setPicked} />
+            {picked && (
+              <AddItemDialog
+                key={picked.id}
+                product={picked}
+                availablePieces={picked.stock - (inBill.get(picked.id) ?? 0)}
+                onAdd={(sellAs, quantity) => {
+                  addLine(picked, sellAs, quantity);
+                  setPicked(null);
+                }}
+                onClose={() => setPicked(null)}
+              />
+            )}
             {errors.items && <p className="text-sm text-destructive">{errors.items[0]}</p>}
-            <BillLines lines={currentLines} onQuantityChange={setQuantity} onRemove={removeLine} />
+            <BillLines
+              lines={currentLines}
+              onQuantityChange={setQuantity}
+              onSellAsChange={setSellAs}
+              onRemove={removeLine}
+            />
           </CardContent>
         </Card>
       </div>

@@ -8,7 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { BillWithItems } from "@/db/schema";
-import { formatBillNumber, formatCurrency, formatDateTime } from "@/lib/format";
+import { formatBillNumber, formatCurrency, formatDateTime, formatQuantity } from "@/lib/format";
 
 /** Printable bill. Server component: no interactivity. */
 export function BillReceipt({ bill, shopName }: { bill: BillWithItems; shopName: string }) {
@@ -57,7 +57,7 @@ export function BillReceipt({ bill, shopName }: { bill: BillWithItems; shopName:
               <TableCell className="font-medium whitespace-normal">{item.productName}</TableCell>
               <TableCell className="text-right tabular-nums">{formatCurrency(item.unitPrice)}</TableCell>
               <TableCell className="text-right tabular-nums">
-                {item.quantity} {item.unit}
+                {formatQuantity(item.quantity, item.unit, item.piecesPerUnit)}
               </TableCell>
               <TableCell className="text-right tabular-nums">{formatCurrency(item.lineTotal)}</TableCell>
             </TableRow>

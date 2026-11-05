@@ -18,6 +18,7 @@ import type { Product } from "@/db/schema";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { setProductActive } from "../actions";
+import { hasPack } from "../pack";
 import { ProductFormDialog } from "./product-form-dialog";
 import { StockAdjustDialog } from "./stock-adjust-dialog";
 import { StockBadge } from "./stock-badge";
@@ -90,7 +91,14 @@ export function ProductTable({ products }: { products: Product[] }) {
                   <TableCell className="hidden text-muted-foreground sm:table-cell">
                     {p.category ?? "—"}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">{formatCurrency(p.price)}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {formatCurrency(p.price)}
+                    {hasPack(p) && (
+                      <p className="text-xs text-muted-foreground">
+                        {formatCurrency(p.packPrice)} / {p.packSize} pcs
+                      </p>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <StockBadge stock={p.stock} lowStockThreshold={p.lowStockThreshold} />
                   </TableCell>

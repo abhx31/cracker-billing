@@ -57,6 +57,11 @@ export function formatDateTime(date: Date) {
   return dateTime.format(date);
 }
 
+/** "3 pc" for pieces, "2 × pack of 25" for packs. */
+export function formatQuantity(quantity: number, unit: string, piecesPerUnit: number) {
+  return piecesPerUnit > 1 ? `${quantity} × ${unit}` : `${quantity} ${unit}`;
+}
+
 export function formatBillNumber(id: number) {
   return `INV-${String(id).padStart(5, "0")}`;
 }

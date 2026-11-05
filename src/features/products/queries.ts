@@ -21,6 +21,8 @@ export async function listBillableProducts() {
       category: products.category,
       unit: products.unit,
       price: products.price,
+      packSize: products.packSize,
+      packPrice: products.packPrice,
       stock: products.stock,
     })
     .from(products)

@@ -3,6 +3,7 @@ import { z } from "zod";
 export const billItemInputSchema = z.object({
   productId: z.number().int().positive(),
   quantity: z.number().int("Quantity must be a whole number").min(1, "Quantity must be at least 1"),
+  sellAs: z.enum(["piece", "pack"]).default("piece"),
 });
 
 export const createBillSchema = z.object({

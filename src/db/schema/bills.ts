@@ -59,6 +59,8 @@ export const billItems = pgTable(
     unit: text("unit").notNull(),
     unitPrice: numeric("unit_price", { precision: 12, scale: 2, mode: "number" }).notNull(),
     quantity: integer("quantity").notNull(),
+    /** Pieces per unit sold: 1 for single pieces, the pack size for packs. */
+    piecesPerUnit: integer("pieces_per_unit").notNull().default(1),
     lineTotal: numeric("line_total", { precision: 12, scale: 2, mode: "number" }).notNull(),
   },
   (t) => [

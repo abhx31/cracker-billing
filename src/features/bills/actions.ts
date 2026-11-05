@@ -83,8 +83,8 @@ export async function deleteBill(billId: number): Promise<ActionResult> {
   if (!id.success) return fromZodError(id.error);
 
   try {
-    const { restoredUnits } = await deleteBillRecord(id.data);
-    return ok(undefined, `Bill deleted. ${restoredUnits} item(s) returned to stock.`);
+    const { restoredPieces } = await deleteBillRecord(id.data);
+    return ok(undefined, `Bill deleted. ${restoredPieces} piece(s) returned to stock.`);
   } catch (error) {
     return fail(error instanceof BillError ? error.message : errorMessage(error, "Could not delete bill"));
   }
