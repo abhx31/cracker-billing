@@ -147,6 +147,9 @@ export function BillForm({
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
+    // Dialogs render in a portal but React still bubbles their submit events
+    // here; only this form's own submit should save the bill.
+    if (e.target !== e.currentTarget) return;
     if (currentLines.length === 0) {
       setErrors({ items: ["Add at least one item"] });
       toast.error("Add at least one item");
@@ -210,130 +213,133 @@ export function BillForm({
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-6 lg:grid-cols-[1fr_320px]">
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Customer</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <FormField
-              label="Customer name"
-              name="customerName"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              placeholder="e.g. Ravi Kumar"
-              autoComplete="off"
-              required
-              errors={errors.customerName}
-            />
-            <FormField
-              label="WhatsApp number"
-              name="customerPhone"
-              type="tel"
-              inputMode="tel"
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
-              placeholder="98765 43210"
-              autoComplete="off"
-              required
-              hint="10-digit numbers get the default country code."
-              errors={errors.customerPhone}
-            />
-          </CardContent>
-        </Card>
+    <>
+      <form onSubmit={submit} className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Customer</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                label="Customer name"
+                name="customerName"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="e.g. Ravi Kumar"
+                autoComplete="off"
+                required
+                errors={errors.customerName}
+              />
+              <FormField
+                label="WhatsApp number"
+                name="customerPhone"
+                type="tel"
+                inputMode="tel"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="98765 43210"
+                autoComplete="off"
+                required
+                hint="10-digit numbers get the default country code."
+                errors={errors.customerPhone}
+              />
+            </CardContent>
+          </Card>
 
-        <Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Items</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ProductPicker products={products} onPick={setPicked} />
+              {errors.items && <p className="text-sm text-destructive">{errors.items[0]}</p>}
+              <BillLines
+                lines={currentLines}
+                onQuantityChange={setQuantity}
+                onSellAsChange={setSellAs}
+                onRemove={removeLine}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="h-fit lg:sticky lg:top-20">
           <CardHeader>
-            <CardTitle>Items</CardTitle>
+            <CardTitle>Summary</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <ProductPicker products={products} onPick={setPicked} />
-            {picked && (
-              <AddItemDialog
-                key={picked.id}
-                product={picked}
-                onAdd={(sellAs, quantity) => {
-                  addLine(picked, sellAs, quantity);
-                  setPicked(null);
-                }}
-                onClose={() => setPicked(null)}
-              />
-            )}
-            {errors.items && <p className="text-sm text-destructive">{errors.items[0]}</p>}
-            <BillLines
-              lines={currentLines}
-              onQuantityChange={setQuantity}
-              onSellAsChange={setSellAs}
-              onRemove={removeLine}
+            <FormField
+              label="Discount (%)"
+              name="discountPercent"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={100}
+              step="0.01"
+              value={discount}
+              onChange={(e) => setDiscount(e.target.value)}
+              placeholder="0"
+              errors={errors.discountPercent}
             />
+            <dl className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Subtotal</dt>
+                <dd className="tabular-nums">{formatCurrency(totals.subtotal)}</dd>
+              </div>
+              {totals.discountAmount > 0 && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Discount ({discountPercent}%)</dt>
+                  <dd className="tabular-nums">−{formatCurrency(totals.discountAmount)}</dd>
+                </div>
+              )}
+              <Separator />
+              <div className="flex justify-between text-lg font-semibold">
+                <dt>Total</dt>
+                <dd className="tabular-nums">{formatCurrency(totals.total)}</dd>
+              </div>
+            </dl>
+            <FormField
+              label="Billed by"
+              name="billedBy"
+              value={billedBy}
+              onChange={(e) => setBilledBy(e.target.value)}
+              placeholder="Your name"
+              autoComplete="off"
+              required
+              errors={errors.billedBy}
+            />
+            {editing ? (
+              <div className="grid gap-2">
+                <Button type="submit" size="lg" className="w-full" disabled={pending}>
+                  <SaveIcon />
+                  {pending ? "Saving…" : "Save changes"}
+                </Button>
+                <Button asChild variant="ghost" className="w-full">
+                  <Link href={`/bills/${editing.billId}`}>Cancel</Link>
+                </Button>
+              </div>
+            ) : (
+              <Button type="submit" size="lg" className="w-full" disabled={pending}>
+                <SendIcon />
+                {pending ? "Saving…" : autoSend ? "Save & send on WhatsApp" : "Save & open WhatsApp"}
+              </Button>
+            )}
           </CardContent>
         </Card>
-      </div>
-
-      <Card className="h-fit lg:sticky lg:top-20">
-        <CardHeader>
-          <CardTitle>Summary</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <FormField
-            label="Discount (%)"
-            name="discountPercent"
-            type="number"
-            inputMode="decimal"
-            min={0}
-            max={100}
-            step="0.01"
-            value={discount}
-            onChange={(e) => setDiscount(e.target.value)}
-            placeholder="0"
-            errors={errors.discountPercent}
-          />
-          <dl className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Subtotal</dt>
-              <dd className="tabular-nums">{formatCurrency(totals.subtotal)}</dd>
-            </div>
-            {totals.discountAmount > 0 && (
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Discount ({discountPercent}%)</dt>
-                <dd className="tabular-nums">−{formatCurrency(totals.discountAmount)}</dd>
-              </div>
-            )}
-            <Separator />
-            <div className="flex justify-between text-lg font-semibold">
-              <dt>Total</dt>
-              <dd className="tabular-nums">{formatCurrency(totals.total)}</dd>
-            </div>
-          </dl>
-          <FormField
-            label="Billed by"
-            name="billedBy"
-            value={billedBy}
-            onChange={(e) => setBilledBy(e.target.value)}
-            placeholder="Your name"
-            autoComplete="off"
-            required
-            errors={errors.billedBy}
-          />
-          {editing ? (
-            <div className="grid gap-2">
-              <Button type="submit" size="lg" className="w-full" disabled={pending}>
-                <SaveIcon />
-                {pending ? "Saving…" : "Save changes"}
-              </Button>
-              <Button asChild variant="ghost" className="w-full">
-                <Link href={`/bills/${editing.billId}`}>Cancel</Link>
-              </Button>
-            </div>
-          ) : (
-            <Button type="submit" size="lg" className="w-full" disabled={pending}>
-              <SendIcon />
-              {pending ? "Saving…" : autoSend ? "Save & send on WhatsApp" : "Save & open WhatsApp"}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-    </form>
+      </form>
+      {/* Outside the bill form so "Add to bill" can't submit the whole bill. */}
+      {picked && (
+        <AddItemDialog
+          key={picked.id}
+          product={picked}
+          onAdd={(sellAs, quantity) => {
+            addLine(picked, sellAs, quantity);
+            setPicked(null);
+          }}
+          onClose={() => setPicked(null)}
+        />
+      )}
+    </>
   );
 }
