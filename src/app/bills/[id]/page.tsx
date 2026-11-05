@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon } from "lucide-react";
+import { ArrowLeftIcon, PencilIcon } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +12,7 @@ import { WhatsappStatusBadge } from "@/features/bills/components/whatsapp-status
 import { getBill } from "@/features/bills/queries";
 import { billPdfPath, billWhatsappShare, whatsappMode } from "@/features/whatsapp";
 import { env } from "@/lib/env";
-import { formatBillNumber } from "@/lib/format";
+import { formatBillNumber, formatDateTime } from "@/lib/format";
 
 export default function BillPage({ params }: PageProps<"/bills/[id]">) {
   return (
@@ -45,6 +45,12 @@ async function BillDetail({ params }: Pick<PageProps<"/bills/[id]">, "params">) 
         actions={
           <>
             <DeleteBillButton billId={bill.id} redirectTo="/bills" />
+            <Button asChild variant="outline">
+              <Link href={`/bills/${bill.id}/edit`}>
+                <PencilIcon />
+                Edit
+              </Link>
+            </Button>
             <BillActions
               billId={bill.id}
               share={billWhatsappShare(bill)}
@@ -60,6 +66,9 @@ async function BillDetail({ params }: Pick<PageProps<"/bills/[id]">, "params">) 
         <WhatsappStatusBadge status={bill.whatsappStatus} />
         {bill.whatsappStatus === "failed" && bill.whatsappError && (
           <span className="text-destructive">{bill.whatsappError}</span>
+        )}
+        {bill.editedAt && (
+          <span className="text-muted-foreground">· Edited {formatDateTime(bill.editedAt)}</span>
         )}
       </div>
       <BillReceipt bill={bill} shopName={env().SHOP_NAME} />

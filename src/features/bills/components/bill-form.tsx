@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SendIcon } from "lucide-react";
+import { SaveIcon, SendIcon } from "lucide-react";
 import { toast } from "sonner";
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import type { FieldErrors } from "@/lib/action-result";
 import { formatCurrency } from "@/lib/format";
 import type { BillableProduct } from "@/features/products/queries";
 import { openPendingTab } from "@/features/whatsapp/links";
-import { createBill, markBillShared } from "../actions";
+import { createBill, markBillShared, updateBill } from "../actions";
 import { computeTotals } from "../calc";
 import { sellUnit, type SellAs } from "@/features/products/pack";
 import { BillLines, lineKey, type BillLine } from "./bill-lines";
@@ -38,31 +39,48 @@ function storeBiller(name: string) {
   }
 }
 
+/** An existing bill loaded into the form for editing. */
+export type BillFormEditing = {
+  billId: number;
+  customerName: string;
+  customerPhone: string;
+  billedBy: string;
+  discountPercent: number;
+  lines: BillLine[];
+};
+
 export function BillForm({
   products,
   autoSend,
+  editing,
 }: {
   products: BillableProduct[];
   /** True when WhatsApp Cloud API is configured and bills go out on save. */
   autoSend: boolean;
+  /** When set, the form edits this bill instead of creating a new one. */
+  editing?: BillFormEditing;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [billedBy, setBilledBy] = useState("");
-  const [discount, setDiscount] = useState("");
-  const [lines, setLines] = useState<BillLine[]>([]);
+  const [customerName, setCustomerName] = useState(editing?.customerName ?? "");
+  const [customerPhone, setCustomerPhone] = useState(editing?.customerPhone ?? "");
+  const [billedBy, setBilledBy] = useState(editing?.billedBy ?? "");
+  const [discount, setDiscount] = useState(
+    editing?.discountPercent ? String(editing.discountPercent) : "",
+  );
+  const [lines, setLines] = useState<BillLine[]>(editing?.lines ?? []);
   // Cracker picked from search, waiting for piece/pack + quantity.
   const [picked, setPicked] = useState<BillableProduct | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
 
   useEffect(() => {
+    // An edited bill keeps its own biller.
+    if (editing) return;
     const stored = readStoredBiller();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage is client-only
     if (stored) setBilledBy(stored);
-  }, []);
+  }, [editing]);
 
   // Keep line products in sync with fresh prices after a refresh.
   const productsById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
@@ -135,21 +153,37 @@ export function BillForm({
       return;
     }
 
+    const input = {
+      customerName,
+      customerPhone,
+      billedBy,
+      discountPercent,
+      items: currentLines.map((l) => ({
+        productId: l.product.id,
+        quantity: l.quantity,
+        sellAs: l.sellAs,
+      })),
+    };
+
+    if (editing) {
+      startTransition(async () => {
+        const result = await updateBill(editing.billId, input);
+        if (!result.ok) {
+          setErrors(result.fieldErrors ?? {});
+          toast.error(result.error);
+          return;
+        }
+        toast.success("Bill updated. Send it on WhatsApp again so the customer has the new total.");
+        router.push(`/bills/${editing.billId}`);
+      });
+      return;
+    }
+
     // Must open synchronously in the submit handler or the browser blocks it.
     const whatsappTab = autoSend ? null : openPendingTab();
 
     startTransition(async () => {
-      const result = await createBill({
-        customerName,
-        customerPhone,
-        billedBy,
-        discountPercent,
-        items: currentLines.map((l) => ({
-          productId: l.product.id,
-          quantity: l.quantity,
-          sellAs: l.sellAs,
-        })),
-      });
+      const result = await createBill(input);
 
       if (!result.ok) {
         whatsappTab?.close();
@@ -282,10 +316,22 @@ export function BillForm({
             required
             errors={errors.billedBy}
           />
-          <Button type="submit" size="lg" className="w-full" disabled={pending}>
-            <SendIcon />
-            {pending ? "Saving…" : autoSend ? "Save & send on WhatsApp" : "Save & open WhatsApp"}
-          </Button>
+          {editing ? (
+            <div className="grid gap-2">
+              <Button type="submit" size="lg" className="w-full" disabled={pending}>
+                <SaveIcon />
+                {pending ? "Saving…" : "Save changes"}
+              </Button>
+              <Button asChild variant="ghost" className="w-full">
+                <Link href={`/bills/${editing.billId}`}>Cancel</Link>
+              </Button>
+            </div>
+          ) : (
+            <Button type="submit" size="lg" className="w-full" disabled={pending}>
+              <SendIcon />
+              {pending ? "Saving…" : autoSend ? "Save & send on WhatsApp" : "Save & open WhatsApp"}
+            </Button>
+          )}
         </CardContent>
       </Card>
     </form>

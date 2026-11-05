@@ -21,6 +21,7 @@ import {
   createBill as createBillRecord,
   deleteBill as deleteBillRecord,
   setWhatsappStatus,
+  updateBill as updateBillRecord,
 } from "./service";
 
 export type CreateBillResult = ActionResult<{
@@ -34,7 +35,8 @@ export type CreateBillResult = ActionResult<{
   };
 }>;
 
-export async function createBill(input: CreateBillInput): Promise<CreateBillResult> {
+/** Validates bill input and normalizes the phone; shared by create and edit. */
+function parseBillInput(input: CreateBillInput) {
   const parsed = createBillSchema.safeParse(input);
   if (!parsed.success) return fromZodError(parsed.error);
 
@@ -42,10 +44,16 @@ export async function createBill(input: CreateBillInput): Promise<CreateBillResu
   if (!isValidPhone(customerPhone)) {
     return fail("Enter a valid WhatsApp number", { customerPhone: ["Enter a valid WhatsApp number"] });
   }
+  return ok({ ...parsed.data, customerPhone });
+}
+
+export async function createBill(input: CreateBillInput): Promise<CreateBillResult> {
+  const parsed = parseBillInput(input);
+  if (!parsed.ok) return parsed;
 
   let bill;
   try {
-    bill = await createBillRecord({ ...parsed.data, customerPhone });
+    bill = await createBillRecord(parsed.data);
   } catch (error) {
     return fail(error instanceof BillError ? error.message : errorMessage(error, "Could not save bill"));
   }
@@ -71,6 +79,24 @@ export async function createBill(input: CreateBillInput): Promise<CreateBillResu
       share: mode === "link" ? billWhatsappShare(bill) : undefined,
     },
   });
+}
+
+/** Saves changes to an existing bill; it keeps its number and PDF link. */
+export async function updateBill(
+  billId: number,
+  input: CreateBillInput,
+): Promise<ActionResult<{ id: number }>> {
+  const id = billIdSchema.safeParse(billId);
+  if (!id.success) return fromZodError(id.error);
+  const parsed = parseBillInput(input);
+  if (!parsed.ok) return parsed;
+
+  try {
+    const bill = await updateBillRecord(id.data, parsed.data);
+    return ok({ id: bill.id }, "Bill updated");
+  } catch (error) {
+    return fail(error instanceof BillError ? error.message : errorMessage(error, "Could not update bill"));
+  }
 }
 
 /**

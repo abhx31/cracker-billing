@@ -42,6 +42,8 @@ export const bills = pgTable(
       .unique()
       .default(sql`replace(gen_random_uuid()::text, '-', '')`),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Last time the bill was edited after being saved; null if never. */
+    editedAt: timestamp("edited_at", { withTimezone: true }),
   },
   (t) => [index("bills_created_at_idx").on(t.createdAt)],
 );
