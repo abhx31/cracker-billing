@@ -1,6 +1,13 @@
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { BillWithItems } from "@/db/schema";
-import { formatBillNumber, formatCurrency, formatDateTime, formatQuantity } from "@/lib/format";
+import {
+  formatBillNumber,
+  formatCurrency,
+  formatDateTime,
+  formatQuantity,
+  formatSignedCurrency,
+} from "@/lib/format";
+import { billRoundOff } from "../calc";
 
 const colors = {
   text: "#1c1917",
@@ -83,6 +90,7 @@ export function BillDocument({
   logo?: PdfLogo;
 }) {
   const billNumber = formatBillNumber(bill.id);
+  const roundOff = billRoundOff(bill);
 
   return (
     <Document title={`${shopName} - ${billNumber}`} author={shopName} subject="Bill">
@@ -148,6 +156,12 @@ export function BillDocument({
             <View style={styles.totalRow}>
               <Text style={{ color: colors.muted }}>Discount ({bill.discountPercent}%)</Text>
               <Text>−{formatCurrency(bill.discountAmount)}</Text>
+            </View>
+          )}
+          {roundOff !== 0 && (
+            <View style={styles.totalRow}>
+              <Text style={{ color: colors.muted }}>Round off</Text>
+              <Text>{formatSignedCurrency(roundOff)}</Text>
             </View>
           )}
           <View style={[styles.totalRow, styles.grandTotal]}>

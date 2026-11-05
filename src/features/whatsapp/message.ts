@@ -1,5 +1,6 @@
 import type { BillWithItems } from "@/db/schema";
-import { formatBillNumber, formatCurrency, formatDateTime } from "@/lib/format";
+import { billRoundOff } from "@/features/bills/calc";
+import { formatBillNumber, formatCurrency, formatDateTime, formatSignedCurrency } from "@/lib/format";
 
 /**
  * Plain-text bill using WhatsApp's *bold* markup. With a PDF link the message
@@ -34,6 +35,10 @@ export function buildBillMessage(bill: BillWithItems, shopName: string, pdfUrl?:
     );
     if (bill.discountAmount > 0) {
       lines.push(`Discount (${bill.discountPercent}%): -${formatCurrency(bill.discountAmount)}`);
+    }
+    const roundOff = billRoundOff(bill);
+    if (roundOff !== 0) {
+      lines.push(`Round off: ${formatSignedCurrency(roundOff)}`);
     }
     lines.push(`*Total: ${formatCurrency(bill.total)}*`);
   }

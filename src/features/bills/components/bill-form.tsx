@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import type { FieldErrors } from "@/lib/action-result";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatSignedCurrency } from "@/lib/format";
 import type { BillableProduct } from "@/features/products/queries";
 import { openPendingTab } from "@/features/whatsapp/links";
 import { createBill, markBillShared, updateBill } from "../actions";
@@ -291,6 +291,12 @@ export function BillForm({
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Discount ({discountPercent}%)</dt>
                   <dd className="tabular-nums">−{formatCurrency(totals.discountAmount)}</dd>
+                </div>
+              )}
+              {totals.roundOff !== 0 && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Round off</dt>
+                  <dd className="tabular-nums">{formatSignedCurrency(totals.roundOff)}</dd>
                 </div>
               )}
               <Separator />

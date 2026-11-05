@@ -9,10 +9,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { BillWithItems } from "@/db/schema";
-import { formatBillNumber, formatCurrency, formatDateTime, formatQuantity } from "@/lib/format";
+import {
+  formatBillNumber,
+  formatCurrency,
+  formatDateTime,
+  formatQuantity,
+  formatSignedCurrency,
+} from "@/lib/format";
+import { billRoundOff } from "../calc";
 
 /** Printable bill. Server component: no interactivity. */
 export function BillReceipt({ bill, shopName }: { bill: BillWithItems; shopName: string }) {
+  const roundOff = billRoundOff(bill);
   return (
     <article className="rounded-xl border bg-card p-6 print:border-0 print:p-0">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -81,6 +89,16 @@ export function BillReceipt({ bill, shopName }: { bill: BillWithItems; shopName:
               </TableCell>
               <TableCell className="text-right tabular-nums">
                 −{formatCurrency(bill.discountAmount)}
+              </TableCell>
+            </TableRow>
+          )}
+          {roundOff !== 0 && (
+            <TableRow>
+              <TableCell colSpan={4} className="text-right font-normal text-muted-foreground">
+                Round off
+              </TableCell>
+              <TableCell className="text-right tabular-nums">
+                {formatSignedCurrency(roundOff)}
               </TableCell>
             </TableRow>
           )}

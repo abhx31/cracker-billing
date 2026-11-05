@@ -57,6 +57,11 @@ export function formatDateTime(date: Date) {
   return dateTime.format(date);
 }
 
+/** "+₹0.25" / "-₹0.50", for adjustments like round-off. */
+export function formatSignedCurrency(amount: number) {
+  return amount < 0 ? `-${formatCurrency(-amount)}` : `+${formatCurrency(amount)}`;
+}
+
 /** "3 pc" for pieces, "2 × pack of 25" for packs. */
 export function formatQuantity(quantity: number, unit: string, piecesPerUnit: number) {
   return piecesPerUnit > 1 ? `${quantity} × ${unit}` : `${quantity} ${unit}`;

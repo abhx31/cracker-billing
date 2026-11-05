@@ -58,7 +58,7 @@ async function priceLines(tx: Transaction, items: CreateBillInput["items"]) {
 export async function createBill(input: BillInput): Promise<BillWithItems> {
   return db.transaction(async (tx) => {
     const lines = await priceLines(tx, input.items);
-    const totals = computeTotals(lines, input.discountPercent);
+    const { subtotal, discountAmount, total } = computeTotals(lines, input.discountPercent);
 
     const [bill] = await tx
       .insert(bills)
@@ -67,7 +67,9 @@ export async function createBill(input: BillInput): Promise<BillWithItems> {
         customerPhone: input.customerPhone,
         billedBy: input.billedBy,
         discountPercent: input.discountPercent,
-        ...totals,
+        subtotal,
+        discountAmount,
+        total,
       })
       .returning();
 
@@ -95,7 +97,7 @@ export async function updateBill(billId: number, input: BillInput): Promise<Bill
     if (!existing) throw new BillError("Bill not found. It may have been deleted.");
 
     const lines = await priceLines(tx, input.items);
-    const totals = computeTotals(lines, input.discountPercent);
+    const { subtotal, discountAmount, total } = computeTotals(lines, input.discountPercent);
 
     const [bill] = await tx
       .update(bills)
@@ -104,7 +106,9 @@ export async function updateBill(billId: number, input: BillInput): Promise<Bill
         customerPhone: input.customerPhone,
         billedBy: input.billedBy,
         discountPercent: input.discountPercent,
-        ...totals,
+        subtotal,
+        discountAmount,
+        total,
         whatsappStatus: "pending",
         whatsappError: null,
         editedAt: new Date(),
