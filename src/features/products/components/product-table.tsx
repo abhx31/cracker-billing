@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { ArchiveIcon, ArchiveRestoreIcon, PackagePlusIcon, PencilIcon, SearchIcon } from "lucide-react";
+import { ArchiveIcon, ArchiveRestoreIcon, PencilIcon, SearchIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,8 +20,6 @@ import { cn } from "@/lib/utils";
 import { setProductActive } from "../actions";
 import { hasPack } from "../pack";
 import { ProductFormDialog } from "./product-form-dialog";
-import { StockAdjustDialog } from "./stock-adjust-dialog";
-import { StockBadge } from "./stock-badge";
 
 export function ProductTable({ products }: { products: Product[] }) {
   const [query, setQuery] = useState("");
@@ -65,14 +63,13 @@ export function ProductTable({ products }: { products: Product[] }) {
               <TableHead>Product</TableHead>
               <TableHead className="hidden sm:table-cell">Category</TableHead>
               <TableHead className="text-right">Price</TableHead>
-              <TableHead>Stock</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {visible.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                   {products.length === 0 ? "No products yet. Add your first item." : "No matches."}
                 </TableCell>
               </TableRow>
@@ -100,9 +97,6 @@ export function ProductTable({ products }: { products: Product[] }) {
                     )}
                   </TableCell>
                   <TableCell>
-                    <StockBadge stock={p.stock} lowStockThreshold={p.lowStockThreshold} />
-                  </TableCell>
-                  <TableCell>
                     <ProductRowActions product={p} />
                   </TableCell>
                 </TableRow>
@@ -128,17 +122,6 @@ function ProductRowActions({ product }: { product: Product }) {
 
   return (
     <div className="flex justify-end gap-1">
-      {product.isActive && (
-        <StockAdjustDialog
-          product={product}
-          trigger={
-            <Button variant="outline" size="sm">
-              <PackagePlusIcon />
-              <span className="hidden md:inline">Stock</span>
-            </Button>
-          }
-        />
-      )}
       <ProductFormDialog
         product={product}
         trigger={

@@ -22,7 +22,7 @@ export const products = pgTable(
     /** Optional whole-pack offer: `packPrice` for `packSize` pieces. Both or neither. */
     packSize: integer("pack_size"),
     packPrice: numeric("pack_price", { precision: 12, scale: 2, mode: "number" }),
-    /** Always counted in pieces; selling a pack deducts `packSize`. */
+    // Unused (the shop doesn't track stock); kept so no migration is needed.
     stock: integer("stock").notNull().default(0),
     lowStockThreshold: integer("low_stock_threshold").notNull().default(10),
     isActive: boolean("is_active").notNull().default(true),

@@ -14,7 +14,7 @@ export function hasPack<T extends Sellable>(
   return product.packSize !== null && product.packPrice !== null;
 }
 
-/** Price, pieces taken from stock, and unit label for one unit sold. */
+/** Price, pieces, and unit label for one unit sold. */
 export function sellUnit(product: Sellable, sellAs: SellAs) {
   if (sellAs === "pack" && hasPack(product)) {
     return {

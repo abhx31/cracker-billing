@@ -2,7 +2,7 @@
  * Product list from "clean_material_list_.pdf" (73 items).
  *
  * sp: price of one piece. pack: [pack price, pieces per pack] when the item is
- * also sold as a whole pack. The list has no stock counts, so stock starts at 0.
+ * also sold as a whole pack.
  */
 export type MaterialItem = {
   name: string;

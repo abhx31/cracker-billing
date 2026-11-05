@@ -1,6 +1,6 @@
 # Cracker Billing
 
-A simple billing and stock app for a cracker shop. Each bill records the customer name, WhatsApp number, items and who billed it. Bills are shared to the customer on WhatsApp. There is no login.
+A simple billing app for a cracker shop. Each bill records the customer name, WhatsApp number, items and who billed it. Bills are shared to the customer on WhatsApp. There is no login.
 
 **Stack:** Next.js 16 (App Router, Cache Components) · TypeScript · Tailwind CSS v4 · shadcn/ui · Drizzle ORM · Neon Postgres
 
@@ -18,11 +18,11 @@ npm run dev
 
 | Route         | What it does                                                    |
 | ------------- | --------------------------------------------------------------- |
-| `/`           | Today's sales, stock on hand, low-stock items, recent bills     |
+| `/`           | Today's and season sales, recent bills, sales by day            |
 | `/bills/new`  | Create a bill: customer, items (searchable), discount %, biller |
 | `/bills`      | Bill history with search (name, phone, biller, bill no.)        |
 | `/bills/[id]` | Printable bill + Send on WhatsApp                               |
-| `/stock`      | Add/edit products, add or remove stock, archive items           |
+| `/products`   | Add/edit products (piece and pack prices), archive items        |
 
 ## Bill PDFs
 
@@ -65,7 +65,7 @@ src/
     schema/                 Drizzle tables: products, bills, bill_items
     index.ts                Neon pool + Drizzle client (lazy)
   features/
-    products/               stock: schemas, queries, server actions, components
+    products/               products: pack pricing, schemas, queries, actions, components
     bills/                  billing: calc, schemas, service (transaction), queries, actions, components
     whatsapp/               message builder, phone normalizing, providers (Cloud API)
   lib/                      env validation, formatting, action result helpers
@@ -75,9 +75,9 @@ drizzle/                    generated SQL migrations
 
 How the parts fit together:
 
-- **Queries** (`queries.ts`) are server-only reads. They call `connection()` so stock and sales are always live.
+- **Queries** (`queries.ts`) are server-only reads. They call `connection()` so prices and sales are always live.
 - **Actions** (`actions.ts`) are Server Actions. They validate input with Zod and return `{ ok, data | error }`.
-- **Bill creation** (`features/bills/service.ts`) runs in a single transaction. It locks the product rows (`SELECT … FOR UPDATE`), checks stock, saves the bill and its items, and deducts stock. Two billers can't sell the last box twice, and prices always come from the database. A database `CHECK (stock >= 0)` is the final safeguard.
+- **Bill creation** (`features/bills/service.ts`) saves the bill and its items in one transaction. Prices always come from the database, never from the browser. Each line is sold by the piece or by the pack (`features/products/pack.ts`). Stock is not tracked.
 - **WhatsApp** is behind a small `WhatsappSender` interface (`features/whatsapp/providers`). Adding another provider (e.g. Twilio, Gupshup) means adding one file.
 
 ## Scripts
@@ -96,6 +96,6 @@ How the parts fit together:
 
 - There is no auth by design. Anyone who can open the URL can bill. Deploy it privately or put it behind your host's password protection (e.g. Vercel Deployment Protection) if it's on the public internet.
 - The biller's name is remembered per device (localStorage), so they don't retype it.
-- Deleting a bill (bill page or the trash icon in the list) asks for confirmation, then puts its items back into stock. A WhatsApp message already sent can't be recalled.
+- Deleting a bill (bill page or the trash icon in the list) asks for confirmation first. A WhatsApp message already sent can't be recalled.
 - Dark mode: use the sun/moon button in the header. It follows the device setting until you pick one. The choice is saved per device, and bills always print in light mode.
 - Times are shown in IST (`TIME_ZONE` in `src/lib/format.ts`). "Today's sales" uses the IST day.

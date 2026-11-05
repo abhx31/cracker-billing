@@ -27,9 +27,9 @@ async function NewBill() {
   if (products.length === 0) {
     return (
       <div className="rounded-lg border border-dashed p-10 text-center">
-        <p className="mb-4 text-muted-foreground">Add products to your stock before billing.</p>
+        <p className="mb-4 text-muted-foreground">Add products before billing.</p>
         <Button asChild>
-          <Link href="/stock">Go to stock</Link>
+          <Link href="/products">Go to products</Link>
         </Button>
       </div>
     );

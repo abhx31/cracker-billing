@@ -15,7 +15,7 @@ import { openPendingTab } from "@/features/whatsapp/links";
 import { createBill, markBillShared } from "../actions";
 import { computeTotals } from "../calc";
 import { sellUnit, type SellAs } from "@/features/products/pack";
-import { BillLines, lineKey, maxQuantity, piecesByProduct, type BillLine } from "./bill-lines";
+import { BillLines, lineKey, type BillLine } from "./bill-lines";
 import { AddItemDialog } from "./add-item-dialog";
 import { ProductPicker } from "./product-picker";
 
@@ -64,7 +64,7 @@ export function BillForm({
     if (stored) setBilledBy(stored);
   }, []);
 
-  // Keep line products in sync with fresh stock/prices after a refresh.
+  // Keep line products in sync with fresh prices after a refresh.
   const productsById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
   const currentLines = useMemo(
     () =>
@@ -74,9 +74,6 @@ export function BillForm({
     [lines, productsById],
   );
 
-  // Pieces already on the bill per product (packs count as their pack size).
-  const inBill = useMemo(() => piecesByProduct(currentLines), [currentLines]);
-
   const discountPercent = Math.min(100, Math.max(0, Number(discount) || 0));
   const totals = computeTotals(
     currentLines.map((l) => ({
@@ -85,7 +82,6 @@ export function BillForm({
     })),
     discountPercent,
   );
-  const overStock = currentLines.some((l) => l.quantity > maxQuantity(l, currentLines));
 
   /** Adds from the piece/pack dialog; same product + kind adds to the existing line. */
   function addLine(product: BillableProduct, sellAs: SellAs, quantity: number) {
@@ -136,10 +132,6 @@ export function BillForm({
     if (currentLines.length === 0) {
       setErrors({ items: ["Add at least one item"] });
       toast.error("Add at least one item");
-      return;
-    }
-    if (overStock) {
-      toast.error("Some items exceed available stock");
       return;
     }
 
@@ -222,12 +214,11 @@ export function BillForm({
             <CardTitle>Items</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <ProductPicker products={products} inBill={inBill} onPick={setPicked} />
+            <ProductPicker products={products} onPick={setPicked} />
             {picked && (
               <AddItemDialog
                 key={picked.id}
                 product={picked}
-                availablePieces={picked.stock - (inBill.get(picked.id) ?? 0)}
                 onAdd={(sellAs, quantity) => {
                   addLine(picked, sellAs, quantity);
                   setPicked(null);
@@ -291,7 +282,7 @@ export function BillForm({
             required
             errors={errors.billedBy}
           />
-          <Button type="submit" size="lg" className="w-full" disabled={pending || overStock}>
+          <Button type="submit" size="lg" className="w-full" disabled={pending}>
             <SendIcon />
             {pending ? "Saving…" : autoSend ? "Save & send on WhatsApp" : "Save & open WhatsApp"}
           </Button>

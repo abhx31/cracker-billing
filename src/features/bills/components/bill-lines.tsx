@@ -22,25 +22,6 @@ export function lineKey(line: Pick<BillLine, "sellAs"> & { product: { id: number
   return `${line.product.id}:${line.sellAs}`;
 }
 
-/** Pieces each line takes from stock, summed per product. */
-export function piecesByProduct(lines: BillLine[]) {
-  const pieces = new Map<number, number>();
-  for (const line of lines) {
-    const { piecesPerUnit } = sellUnit(line.product, line.sellAs);
-    pieces.set(line.product.id, (pieces.get(line.product.id) ?? 0) + line.quantity * piecesPerUnit);
-  }
-  return pieces;
-}
-
-/** Most units this line can have, given what other lines of the same product use. */
-export function maxQuantity(line: BillLine, lines: BillLine[]) {
-  const { piecesPerUnit } = sellUnit(line.product, line.sellAs);
-  const usedElsewhere = lines
-    .filter((l) => l.product.id === line.product.id && l.sellAs !== line.sellAs)
-    .reduce((sum, l) => sum + l.quantity * sellUnit(l.product, l.sellAs).piecesPerUnit, 0);
-  return Math.floor((line.product.stock - usedElsewhere) / piecesPerUnit);
-}
-
 export function BillLines({
   lines,
   onQuantityChange,
@@ -76,16 +57,12 @@ export function BillLines({
             const { product, quantity, sellAs } = line;
             const key = lineKey(line);
             const { unitPrice, unit } = sellUnit(product, sellAs);
-            const max = maxQuantity(line, lines);
-            const over = quantity > max;
             return (
               <TableRow key={key}>
                 <TableCell className="whitespace-normal">
                   <p className="font-medium">{product.name}</p>
-                  <p className={cn("text-xs", over ? "text-destructive" : "text-muted-foreground")}>
-                    {over
-                      ? `Only ${Math.max(0, max)} ${sellAs === "pack" ? "pack(s)" : product.unit} available`
-                      : `${formatCurrency(unitPrice)} / ${unit} · ${product.stock} ${product.unit} in stock`}
+                  <p className="text-xs text-muted-foreground">
+                    {formatCurrency(unitPrice)} / {unit}
                   </p>
                   {hasPack(product) && (
                     <div
@@ -131,13 +108,11 @@ export function BillLines({
                       type="number"
                       inputMode="numeric"
                       min={1}
-                      max={Math.max(1, max)}
                       value={quantity}
                       onChange={(e) =>
                         onQuantityChange(key, Math.max(0, Math.floor(Number(e.target.value) || 0)))
                       }
                       onBlur={() => quantity < 1 && onQuantityChange(key, 1)}
-                      aria-invalid={over || undefined}
                       aria-label={`Quantity of ${product.name}`}
                       className="h-7 w-16 text-center tabular-nums"
                     />
@@ -147,7 +122,6 @@ export function BillLines({
                       size="icon-sm"
                       aria-label={`Increase ${product.name}`}
                       onClick={() => onQuantityChange(key, quantity + 1)}
-                      disabled={quantity >= max}
                     >
                       <PlusIcon />
                     </Button>

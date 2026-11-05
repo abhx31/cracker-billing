@@ -75,7 +75,7 @@ export function DeleteBillButton({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete {billNumber}?</AlertDialogTitle>
           <AlertDialogDescription>
-            The bill is removed permanently and its items go back into stock. A WhatsApp message
+            The bill is removed permanently. A WhatsApp message
             already sent to the customer can&apos;t be recalled.
           </AlertDialogDescription>
         </AlertDialogHeader>

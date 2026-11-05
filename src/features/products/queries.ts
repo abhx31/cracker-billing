@@ -1,10 +1,10 @@
 import "server-only";
-import { and, asc, desc, eq, lte, sql } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { connection } from "next/server";
 import { db } from "@/db";
 import { products } from "@/db/schema";
 
-// Stock changes with every bill, so these reads always hit the database
+// Prices can be edited at any time, so these reads always hit the database
 // (`connection()` opts them out of prerendering).
 
 export async function listProducts() {
@@ -23,7 +23,6 @@ export async function listBillableProducts() {
       price: products.price,
       packSize: products.packSize,
       packPrice: products.packPrice,
-      stock: products.stock,
     })
     .from(products)
     .where(eq(products.isActive, true))
@@ -31,27 +30,3 @@ export async function listBillableProducts() {
 }
 
 export type BillableProduct = Awaited<ReturnType<typeof listBillableProducts>>[number];
-
-export async function listLowStockProducts(limit = 8) {
-  await connection();
-  return db
-    .select()
-    .from(products)
-    .where(and(eq(products.isActive, true), lte(products.stock, products.lowStockThreshold)))
-    .orderBy(asc(products.stock), asc(products.name))
-    .limit(limit);
-}
-
-export async function getStockSummary() {
-  await connection();
-  const [row] = await db
-    .select({
-      productCount: sql<number>`count(*)::int`,
-      totalUnits: sql<number>`coalesce(sum(${products.stock}), 0)::int`,
-      stockValue: sql<number>`coalesce(sum(${products.stock} * ${products.price}), 0)::float`,
-      lowStockCount: sql<number>`count(*) filter (where ${products.stock} <= ${products.lowStockThreshold})::int`,
-    })
-    .from(products)
-    .where(eq(products.isActive, true));
-  return row;
-}

@@ -9,7 +9,7 @@ const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboardIcon, exact: true },
   { href: "/bills/new", label: "New Bill", icon: PlusIcon, exact: true },
   { href: "/bills", label: "Bills", icon: ReceiptTextIcon, exact: false },
-  { href: "/stock", label: "Stock", icon: PackageIcon, exact: false },
+  { href: "/products", label: "Products", icon: PackageIcon, exact: false },
 ] as const;
 
 function isActive(pathname: string | null, href: string, exact: boolean) {

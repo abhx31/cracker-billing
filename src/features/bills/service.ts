@@ -1,5 +1,5 @@
 import "server-only";
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { billItems, bills, products, type BillWithItems, type WhatsappStatus } from "@/db/schema";
 import { sellUnit, type SellAs } from "@/features/products/pack";
@@ -23,8 +23,8 @@ function mergeLines(items: CreateBillInput["items"]) {
 }
 
 /**
- * Creates the bill and deducts stock atomically. Product rows are locked so two
- * billers selling the last box at the same time can't both succeed.
+ * Saves the bill and its items in one transaction. Stock isn't tracked, so
+ * nothing is checked or deducted; prices always come from the database.
  */
 export async function createBill(
   input: Omit<CreateBillInput, "customerPhone"> & { customerPhone: string },
@@ -35,8 +35,7 @@ export async function createBill(
     const rows = await tx
       .select()
       .from(products)
-      .where(inArray(products.id, [...new Set(requested.map((l) => l.productId))]))
-      .for("update");
+      .where(inArray(products.id, [...new Set(requested.map((l) => l.productId))]));
     const byId = new Map(rows.map((p) => [p.id, p]));
 
     const lines = requested.map(({ productId, sellAs, quantity }) => {
@@ -47,7 +46,6 @@ export async function createBill(
       if (sellAs === "pack" && (product.packSize === null || product.packPrice === null)) {
         throw new BillError(`${product.name} is not sold by the pack. Refresh and try again.`);
       }
-      // Price always comes from the database, never from the client.
       const { unitPrice, piecesPerUnit, unit } = sellUnit(product, sellAs);
       return {
         productId,
@@ -59,25 +57,6 @@ export async function createBill(
         lineTotal: roundMoney(unitPrice * quantity),
       };
     });
-
-    // Stock is in pieces; a product may appear as both pieces and packs.
-    const piecesNeeded = new Map<number, number>();
-    for (const line of lines) {
-      piecesNeeded.set(
-        line.productId,
-        (piecesNeeded.get(line.productId) ?? 0) + line.quantity * line.piecesPerUnit,
-      );
-    }
-    for (const [productId, pieces] of piecesNeeded) {
-      const product = byId.get(productId)!;
-      if (product.stock < pieces) {
-        throw new BillError(
-          product.stock === 0
-            ? `${product.name} is out of stock`
-            : `Only ${product.stock} ${product.unit} of ${product.name} left`,
-        );
-      }
-    }
 
     const totals = computeTotals(lines, input.discountPercent);
 
@@ -97,51 +76,17 @@ export async function createBill(
       .values(lines.map((line) => ({ ...line, billId: bill.id })))
       .returning();
 
-    for (const [productId, pieces] of piecesNeeded) {
-      await tx
-        .update(products)
-        .set({ stock: sql`${products.stock} - ${pieces}` })
-        .where(eq(products.id, productId));
-    }
-
     return { ...bill, items };
   });
 }
 
-/**
- * Deletes a bill and puts its items back into stock. Items whose product was
- * since deleted are skipped. The delete runs first so a second concurrent
- * delete of the same bill finds nothing and rolls back without double-adding.
- */
+/** Deletes a bill; its items go with it (cascade). */
 export async function deleteBill(billId: number) {
-  return db.transaction(async (tx) => {
-    const items = await tx
-      .select({
-        productId: billItems.productId,
-        quantity: billItems.quantity,
-        piecesPerUnit: billItems.piecesPerUnit,
-      })
-      .from(billItems)
-      .where(eq(billItems.billId, billId));
-
-    const [deleted] = await tx
-      .delete(bills)
-      .where(eq(bills.id, billId))
-      .returning({ id: bills.id });
-    if (!deleted) throw new BillError("Bill not found. It may already be deleted.");
-
-    for (const item of items) {
-      if (item.productId === null) continue;
-      await tx
-        .update(products)
-        .set({ stock: sql`${products.stock} + ${item.quantity * item.piecesPerUnit}` })
-        .where(eq(products.id, item.productId));
-    }
-
-    return {
-      restoredPieces: items.reduce((sum, item) => sum + item.quantity * item.piecesPerUnit, 0),
-    };
-  });
+  const [deleted] = await db
+    .delete(bills)
+    .where(eq(bills.id, billId))
+    .returning({ id: bills.id });
+  if (!deleted) throw new BillError("Bill not found. It may already be deleted.");
 }
 
 export async function setWhatsappStatus(

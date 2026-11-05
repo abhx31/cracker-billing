@@ -28,8 +28,8 @@ export function ProductFormDialog({ product, trigger }: { product?: Product; tri
           <DialogTitle>{product ? "Edit product" : "Add product"}</DialogTitle>
           <DialogDescription>
             {product
-              ? "Update details. Use “Adjust stock” to change quantity."
-              : "Add a cracker item with its opening stock."}
+              ? "Update the name, brand or prices."
+              : "Add a cracker item with its price."}
           </DialogDescription>
         </DialogHeader>
         {/* Remount on open so the form starts fresh each time. */}
@@ -124,40 +124,6 @@ function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => v
           placeholder="e.g. 350"
           errors={errors?.packPrice}
         />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        {product ? (
-          <FormField
-            label="Low stock alert at"
-            name="lowStockThreshold"
-            type="number"
-            min={0}
-            defaultValue={product.lowStockThreshold}
-            errors={errors?.lowStockThreshold}
-          />
-        ) : (
-          <>
-            <FormField
-              label="Opening stock (pieces)"
-              name="stock"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              step={1}
-              defaultValue={0}
-              required
-              errors={errors?.stock}
-            />
-            <FormField
-              label="Low stock alert at"
-              name="lowStockThreshold"
-              type="number"
-              min={0}
-              defaultValue={10}
-              errors={errors?.lowStockThreshold}
-            />
-          </>
-        )}
       </div>
       <DialogFooter>
         <DialogClose asChild>

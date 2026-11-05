@@ -87,6 +87,18 @@ export async function listBillDays() {
 
 export type BillDay = Awaited<ReturnType<typeof listBillDays>>[number];
 
+/** All bills ever: count and sales (the whole season). */
+export async function getTotalSalesSummary() {
+  await connection();
+  const [row] = await db
+    .select({
+      billCount: sql<number>`count(*)::int`,
+      revenue: sql<number>`coalesce(sum(${bills.total}), 0)::float`,
+    })
+    .from(bills);
+  return row;
+}
+
 export async function getTodaySalesSummary() {
   await connection();
   const [row] = await db

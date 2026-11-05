@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: { default: "Cracker Billing", template: "%s · Cracker Billing" },
-  description: "Bill crackers, track stock and send bills on WhatsApp",
+  description: "Bill crackers and send bills on WhatsApp",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

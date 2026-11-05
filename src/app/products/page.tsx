@@ -8,14 +8,14 @@ import { ProductFormDialog } from "@/features/products/components/product-form-d
 import { ProductTable } from "@/features/products/components/product-table";
 import { listProducts } from "@/features/products/queries";
 
-export const metadata: Metadata = { title: "Stock" };
+export const metadata: Metadata = { title: "Products" };
 
-export default function StockPage() {
+export default function ProductsPage() {
   return (
     <>
       <PageHeader
-        title="Stock"
-        description="Products, prices and quantity on hand"
+        title="Products"
+        description="Crackers, brands and prices"
         actions={
           <ProductFormDialog
             trigger={

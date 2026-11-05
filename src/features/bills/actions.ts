@@ -74,7 +74,7 @@ export async function createBill(input: CreateBillInput): Promise<CreateBillResu
 }
 
 /**
- * Deletes a bill and returns its items to stock. Doesn't call refresh(): the
+ * Deletes a bill. Doesn't call refresh(): the
  * caller either navigates away (from the deleted bill's page, which would
  * otherwise re-render as "not found") or refreshes the router itself.
  */
@@ -83,8 +83,8 @@ export async function deleteBill(billId: number): Promise<ActionResult> {
   if (!id.success) return fromZodError(id.error);
 
   try {
-    const { restoredPieces } = await deleteBillRecord(id.data);
-    return ok(undefined, `Bill deleted. ${restoredPieces} piece(s) returned to stock.`);
+    await deleteBillRecord(id.data);
+    return ok(undefined, "Bill deleted.");
   } catch (error) {
     return fail(error instanceof BillError ? error.message : errorMessage(error, "Could not delete bill"));
   }

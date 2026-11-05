@@ -6,7 +6,7 @@ import { env } from "@/lib/env";
 import * as schema from "./schema";
 
 // The WebSocket driver (instead of neon-http) is used because billing needs
-// interactive transactions to deduct stock safely.
+// interactive transactions to save a bill and its items together.
 neonConfig.webSocketConstructor = ws;
 
 function createDb() {

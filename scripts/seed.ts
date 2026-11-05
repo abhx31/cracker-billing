@@ -22,9 +22,6 @@ const rows: NewProduct[] = materialList.map(({ name, brand, sp, pack }) => ({
   price: sp ?? 0,
   packPrice: pack?.[0] ?? null,
   packSize: pack?.[1] ?? null,
-  stock: 0,
-  // Warn once roughly a pack (or 5 pieces) is left.
-  lowStockThreshold: pack?.[1] ?? 5,
   // Items without a price stay out of billing until one is set.
   isActive: sp !== null,
 }));

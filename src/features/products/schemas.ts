@@ -23,7 +23,6 @@ const productFields = z.object({
     blankToNull,
     z.coerce.number().min(0, "Pack price can't be negative").nullable(),
   ),
-  lowStockThreshold: z.coerce.number().int().min(0).default(10),
 });
 
 // Refinements go on the final schemas: zod can't omit/extend a refined object.
@@ -37,24 +36,11 @@ function requireCompletePack<T extends { packSize: number | null; packPrice: num
   }
 }
 
-export const productInputSchema = productFields
-  .extend({
-    stock: z.coerce.number().int("Stock must be a whole number").min(0, "Stock can't be negative"),
-  })
-  .superRefine(requireCompletePack);
+export const productInputSchema = productFields.superRefine(requireCompletePack);
 
 export const productUpdateSchema = productFields
   .extend({ id: z.coerce.number().int().positive() })
   .superRefine(requireCompletePack);
-
-export const stockAdjustSchema = z.object({
-  productId: z.coerce.number().int().positive(),
-  // Positive to add stock, negative to remove (damage, returns to supplier, ...).
-  delta: z.coerce
-    .number()
-    .int("Quantity must be a whole number")
-    .refine((v) => v !== 0, "Quantity can't be zero"),
-});
 
 export const productActiveSchema = z.object({
   productId: z.coerce.number().int().positive(),

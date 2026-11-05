@@ -15,16 +15,26 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { hasPack } from "@/features/products/pack";
 import type { BillableProduct } from "@/features/products/queries";
 import { formatCurrency } from "@/lib/format";
-import { cn } from "@/lib/utils";
+
+/**
+ * Every typed word must appear in the name or brand ("bird" finds BIRD OTH,
+ * not FP BIG). cmdk's default fuzzy match is too loose for short names.
+ * Names that start with the search rank first.
+ */
+function matchProduct(value: string, search: string, keywords?: string[]) {
+  const terms = search.toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return 1;
+  const name = value.toLowerCase();
+  const haystack = [name, ...(keywords ?? []).map((k) => k.toLowerCase())].join(" ");
+  if (!terms.every((term) => haystack.includes(term))) return 0;
+  return name.startsWith(terms[0]) ? 1 : 0.5;
+}
 
 export function ProductPicker({
   products,
-  inBill,
   onPick,
 }: {
   products: BillableProduct[];
-  /** Quantity already on the bill per product id, to show what's left. */
-  inBill: Map<number, number>;
   onPick: (product: BillableProduct) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -47,45 +57,32 @@ export function ProductPicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
-        <Command>
+        <Command filter={matchProduct}>
           <CommandInput placeholder="Search crackers…" />
           <CommandList>
             <CommandEmpty>No product found.</CommandEmpty>
             <CommandGroup>
-              {products.map((product) => {
-                const left = product.stock - (inBill.get(product.id) ?? 0);
-                return (
-                  <CommandItem
-                    key={product.id}
-                    value={`${product.name} ${product.id}`}
-                    keywords={product.category ? [product.category] : undefined}
-                    disabled={left <= 0}
-                    onSelect={() => {
-                      onPick(product);
-                      setOpen(false);
-                    }}
-                    className="flex items-center justify-between gap-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{product.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {product.category ? `${product.category} · ` : ""}
-                        {formatCurrency(product.price)} / {product.unit}
-                        {hasPack(product) &&
-                          ` · ${formatCurrency(product.packPrice)} / pack of ${product.packSize}`}
-                      </p>
-                    </div>
-                    <span
-                      className={cn(
-                        "shrink-0 text-xs tabular-nums",
-                        left <= 0 ? "text-destructive" : "text-muted-foreground",
-                      )}
-                    >
-                      {left <= 0 ? "No stock" : `${left} left`}
-                    </span>
-                  </CommandItem>
-                );
-              })}
+              {products.map((product) => (
+                <CommandItem
+                  key={product.id}
+                  value={product.name}
+                  keywords={product.category ? [product.category] : undefined}
+                  onSelect={() => {
+                    onPick(product);
+                    setOpen(false);
+                  }}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{product.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {product.category ? `${product.category} · ` : ""}
+                      {formatCurrency(product.price)} / {product.unit}
+                      {hasPack(product) &&
+                        ` · ${formatCurrency(product.packPrice)} / pack of ${product.packSize}`}
+                    </p>
+                  </div>
+                </CommandItem>
+              ))}
             </CommandGroup>
           </CommandList>
         </Command>
